@@ -1,5 +1,9 @@
 # CostPilot
 
+## Conventions
+
+- **Never** include `Co-Authored-By: Claude` or any AI attribution in commit messages.
+
 An npm package and CLI tool that tracks AI API costs locally in SQLite, providing visibility into spending across multiple AI provider integrations.
 
 ## Project Overview
