@@ -1,6 +1,6 @@
 {
   "name": "costpilot",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Track, analyze, and optimize your AI API costs",
   "type": "module",
   "main": "./dist/index.cjs",
