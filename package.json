@@ -31,6 +31,10 @@
     "tracking",
     "analytics"
   ],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "license": "MIT",
   "dependencies": {
     "better-sqlite3": "^9.4.3",
