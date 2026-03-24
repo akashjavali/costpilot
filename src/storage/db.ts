@@ -31,7 +31,7 @@ export function getDefaultDbPath(): string {
 }
 
 export function initDb(path?: string): Database.Database {
-  const dbPath = path ?? getDefaultDbPath();
+  const dbPath = path ?? (process.env.NODE_ENV === "test" ? ":memory:" : getDefaultDbPath());
   db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA);

@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    env: { NODE_ENV: "test" },
     coverage: {
       reporter: ["text", "lcov"],
     },

@@ -4,7 +4,7 @@ import { initDb } from "../storage/db.js";
 
 let initialized = false;
 
-export function initCostPilot(config: CostPilotConfig): void {
+export function initCostPilot(config: Partial<CostPilotConfig> = {}): void {
   if (initialized) return;
   initialized = true;
   initDb(config.dbPath);
