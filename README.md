@@ -1,18 +1,47 @@
 # CostPilot
 
+[![npm version](https://img.shields.io/npm/v/costpilot)](https://www.npmjs.com/package/costpilot)
+[![npm downloads](https://img.shields.io/npm/dm/costpilot)](https://www.npmjs.com/package/costpilot)
+[![license](https://img.shields.io/npm/l/costpilot)](LICENSE)
+[![node](https://img.shields.io/node/v/costpilot)](https://www.npmjs.com/package/costpilot)
+
 Track, analyze, and optimize your AI API costs — locally, with zero config.
 
 All usage is stored in SQLite at `~/.costpilot/usage.db`. No cloud, no account, no telemetry.
 
-## Install
+---
+
+## Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [CLI](#cli)
+- [SDK API](#sdk-api)
+- [Supported Models](#supported-models)
+- [How It Works](#how-it-works)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Installation
 
 ```bash
 npm install costpilot
 ```
 
+For the CLI, install globally:
+
+```bash
+npm install -g costpilot
+```
+
+**Requirements:** Node.js 18+
+
+---
+
 ## Quick Start
 
-Wrap your existing OpenAI client with one line. Everything else stays the same.
+Wrap your existing OpenAI client with one line. The rest of your code stays exactly the same.
 
 ```ts
 import OpenAI from "openai";
@@ -20,63 +49,59 @@ import { withCostPilot } from "costpilot";
 
 const openai = withCostPilot(new OpenAI());
 
+// Use it exactly as you normally would
 const response = await openai.chat.completions.create({
   model: "gpt-4o",
   messages: [{ role: "user", content: "Hello!" }],
 });
-// Cost is logged automatically — no other changes needed
+
+console.log(response.choices[0].message.content);
+// Cost is logged automatically to ~/.costpilot/usage.db
 ```
+
+Then check your spending:
+
+```bash
+costpilot report
+```
+
+---
 
 ## CLI
 
-Install globally to use the CLI from anywhere:
+### `costpilot report`
+
+Usage report for the last N hours.
 
 ```bash
-npm install -g costpilot
+costpilot report           # last 24h (default)
+costpilot report -h 48     # last 48h
+costpilot report -h 168    # last 7 days
 ```
 
-Or use `npx`:
-
-```bash
-npx costpilot report
-```
-
-### Commands
-
-#### `costpilot report`
-
-Show a usage report for the last N hours (default: 24h).
-
-```bash
-costpilot report           # last 24h
-costpilot report -h 72     # last 72h
-```
-
-Output:
 ```
 CostPilot Report — Last 24h
 ───────────────────────────
 
 Total: $0.0530  |  Calls: 47
 
-┌────────────────────────┬────────────────┬───────┬────────┬─────────┬──────────┐
-│ Time                   │ Model          │ Input │ Output │ Cost    │ Duration │
-├────────────────────────┼────────────────┼───────┼────────┼─────────┼──────────┤
-│ 24/03/2026, 6:18:35 pm │ gpt-4o         │ 314   │ 64     │ $0.0014 │ 430ms    │
-│ 24/03/2026, 6:18:23 pm │ gpt-4o-mini    │ 54    │ 136    │ $0.090m │ 210ms    │
-└────────────────────────┴────────────────┴───────┴────────┴─────────┴──────────┘
+┌────────────────────────┬─────────────┬───────┬────────┬─────────┬──────────┐
+│ Time                   │ Model       │ Input │ Output │ Cost    │ Duration │
+├────────────────────────┼─────────────┼───────┼────────┼─────────┼──────────┤
+│ 24/03/2026, 6:18:35 pm │ gpt-4o      │ 314   │ 64     │ $0.0014 │ 430ms    │
+│ 24/03/2026, 6:18:23 pm │ gpt-4o-mini │ 54    │ 136    │ $0.090m │ 210ms    │
+└────────────────────────┴─────────────┴───────┴────────┴─────────┴──────────┘
 ```
 
-#### `costpilot top`
+### `costpilot top`
 
-Show your most expensive models ranked by total cost.
+Models ranked by total spend.
 
 ```bash
-costpilot top              # top 10
+costpilot top              # top 10 (default)
 costpilot top -n 5         # top 5
 ```
 
-Output:
 ```
 Top Models by Cost
 ──────────────────
@@ -89,15 +114,14 @@ Top Models by Cost
   Grand total: $0.0530
 ```
 
-#### `costpilot anomalies`
+### `costpilot anomalies`
 
-Detect cost spikes and surface optimization insights.
+Detects cost spikes and surfaces optimization hints.
 
 ```bash
 costpilot anomalies
 ```
 
-Output:
 ```
 CostPilot Insights & Anomalies
 ──────────────────────────────
@@ -109,29 +133,35 @@ Avg per call:  $0.0011
 💡 81% of cost from gpt-4o — consider a cheaper model
 ```
 
+---
+
 ## SDK API
 
 ### `withCostPilot(client, config?)`
 
-Wraps an AI client and returns a transparent Proxy. All method calls pass through unchanged — costs are logged as a side effect.
+Wraps an AI client with a transparent Proxy. All calls pass through unchanged — costs are logged as a side effect.
 
 ```ts
 import { withCostPilot } from "costpilot";
 
-const client = withCostPilot(openai);
-// or with options:
-const client = withCostPilot(openai, { dbPath: "/custom/path/usage.db" });
+// Default — uses ~/.costpilot/usage.db
+const client = withCostPilot(new OpenAI());
+
+// Custom DB path
+const client = withCostPilot(new OpenAI(), {
+  dbPath: "/custom/path/usage.db",
+});
 ```
 
 ### `initCostPilot(config?)`
 
-Explicitly initialize the database before making any calls. Optional — the DB is also auto-initialized on first call to `withCostPilot`.
+Explicitly initialize the database. Optional — `withCostPilot` auto-initializes on first call, but calling this early lets you set a custom DB path before any calls happen.
 
 ```ts
 import { initCostPilot } from "costpilot";
 
-initCostPilot();                                    // uses ~/.costpilot/usage.db
-initCostPilot({ dbPath: "/custom/path/usage.db" }); // custom path
+initCostPilot();                                     // ~/.costpilot/usage.db
+initCostPilot({ dbPath: "/custom/path/usage.db" });  // custom path
 ```
 
 ### Query Functions
@@ -144,30 +174,72 @@ import {
   getTotalCostByTimeRange,
   getSummary,
   getAllInsights,
-  detectSpikes,
-  getTopModelInsights,
 } from "costpilot";
+```
 
-// All usage records (most recent first, max 1000)
+#### `getAllUsage(limit?)`
+
+Returns all usage records, most recent first. Default limit: 1000.
+
+```ts
 const records = getAllUsage();
+const records = getAllUsage(50); // last 50 records
+```
 
-// Usage in a time range
-const records = getUsageByTimeRange(Date.now() - 86_400_000, Date.now());
+#### `getUsageByTimeRange(fromMs, toMs)`
 
-// Top models by total spend
-const top = getTopModelsByTotalCost(10);
+Records between two Unix millisecond timestamps.
+
+```ts
+const last24h = getUsageByTimeRange(Date.now() - 86_400_000, Date.now());
+```
+
+#### `getTopModelsByTotalCost(limit?)`
+
+Models ranked by total spend. Default limit: 10.
+
+```ts
+const top = getTopModelsByTotalCost(5);
 // [{ model: "gpt-4o", totalCost: 0.043, callCount: 32 }, ...]
+```
 
-// Total cost in a time window
-const cost = getTotalCostByTimeRange(Date.now() - 3_600_000, Date.now());
+#### `getTotalCostByTimeRange(fromMs, toMs)`
 
-// Aggregate summary
+Total cost (USD) in a time window.
+
+```ts
+const costToday = getTotalCostByTimeRange(Date.now() - 86_400_000, Date.now());
+// 0.053
+```
+
+#### `getSummary()`
+
+Aggregate stats across all tracked usage.
+
+```ts
 const summary = getSummary();
-// { totalCostUsd, totalCalls, totalTokens, avgCostPerCall }
+// {
+//   totalCostUsd: 0.053,
+//   totalCalls: 47,
+//   totalTokens: 28400,
+//   avgCostPerCall: 0.00113
+// }
+```
 
-// All insights (spikes + model dominance)
+#### `getAllInsights()`
+
+All active insights — cost spikes and model dominance warnings.
+
+```ts
 const insights = getAllInsights();
-// [{ type: "spike", severity: "critical", message: "...", data: {...} }]
+// [
+//   {
+//     type: "spike",
+//     severity: "critical",
+//     message: "Cost increased 17.2x in last 24h vs previous 24h",
+//     data: { ratio: 17.2, prevTotal: 0.003, currTotal: 0.053, windowHours: 24 }
+//   }
+// ]
 ```
 
 ### Types
@@ -179,7 +251,7 @@ interface UsageRecord {
   id?: number;
   timestamp: number;       // Unix ms
   provider: string;        // "openai" | "anthropic" | "gemini"
-  model: string;
+  model: string;           // e.g. "gpt-4o"
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
@@ -197,20 +269,21 @@ interface InsightResult {
 }
 
 interface CostPilotConfig {
-  provider?: "openai" | "anthropic" | "gemini";
   dbPath?: string;   // defaults to ~/.costpilot/usage.db
   silent?: boolean;  // suppress console warnings
 }
 ```
 
+---
+
 ## Supported Models
 
-Pricing is per the official provider pages as of March 2025.
+Pricing sourced from official provider pages (March 2025). To add or update a model, edit the `PRICING` map in `src/cost/pricing.ts`.
 
 ### OpenAI
 
-| Model | Input (per 1M) | Output (per 1M) |
-|-------|---------------|-----------------|
+| Model | Input / 1M tokens | Output / 1M tokens |
+|-------|------------------|-------------------|
 | gpt-4o | $2.50 | $10.00 |
 | gpt-4o-mini | $0.15 | $0.60 |
 | gpt-4-turbo | $10.00 | $30.00 |
@@ -222,8 +295,8 @@ Pricing is per the official provider pages as of March 2025.
 
 ### Anthropic
 
-| Model | Input (per 1M) | Output (per 1M) |
-|-------|---------------|-----------------|
+| Model | Input / 1M tokens | Output / 1M tokens |
+|-------|------------------|-------------------|
 | claude-3-5-sonnet-20241022 | $3.00 | $15.00 |
 | claude-3-5-haiku-20241022 | $0.80 | $4.00 |
 | claude-3-opus-20240229 | $15.00 | $75.00 |
@@ -231,34 +304,34 @@ Pricing is per the official provider pages as of March 2025.
 
 ### Google Gemini
 
-| Model | Input (per 1M) | Output (per 1M) |
-|-------|---------------|-----------------|
+| Model | Input / 1M tokens | Output / 1M tokens |
+|-------|------------------|-------------------|
 | gemini-1.5-pro | $3.50 | $10.50 |
 | gemini-1.5-flash | $0.075 | $0.30 |
 | gemini-2.0-flash | $0.10 | $0.40 |
 | gemini-2.0-flash-lite | $0.075 | $0.30 |
 
-To add or update a model, edit `PRICING` in `src/cost/pricing.ts` and rebuild.
+---
 
 ## How It Works
 
-CostPilot uses a JavaScript [Proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy) to intercept calls on your AI client without modifying any of its behavior. When a tracked method returns, CostPilot reads the `usage` field from the response, calculates the cost, and enqueues a write to SQLite via `setImmediate` — so your API call is never delayed.
+CostPilot wraps your client in a JavaScript [Proxy](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy). When a method call returns, CostPilot reads the `usage` field from the response, calculates cost from the pricing table, and queues an async SQLite write via `setImmediate` — your API call is never slowed down.
 
 ```
 withCostPilot(client)
-  → Proxy intercepts method calls
-  → Detects provider from client shape
+  → Proxy intercepts every method call
   → On response: reads usage.prompt_tokens + usage.completion_tokens
-  → Calculates cost from pricing table
-  → Queues async SQLite write (never blocks)
-  → Returns result to your code immediately
+  → Calculates cost against pricing table
+  → Queues SQLite write (setImmediate — non-blocking)
+  → Returns response to your code immediately
 ```
 
-## Data Storage
+**Edge cases handled automatically:**
+- **Streaming** (`stream: true`) — silently skipped; token counts are unavailable during streaming
+- **Failed calls** — logged with `costUsd: 0`, original error is re-thrown unchanged
+- **Unknown models** — logged with `costUsd: 0`; add the model to the pricing table to track cost
 
-- **Location**: `~/.costpilot/usage.db` (SQLite, WAL mode)
-- **Schema**: Single `usage` table with timestamp, provider, model, token counts, cost, duration
-- **No network**: All data stays on your machine
+**Data location:** `~/.costpilot/usage.db` (SQLite, WAL mode)
 
 To clear all data:
 
@@ -266,20 +339,57 @@ To clear all data:
 rm ~/.costpilot/usage.db
 ```
 
-## Known Limitations
+---
 
-- **Streaming** (`stream: true`) is not tracked — token counts are unavailable mid-stream. Calls with streaming are silently skipped.
-- **Only the OpenAI SDK** is currently wrapped. Anthropic and Gemini wrappers are planned for v0.2.
-- **Unknown models** are logged with `costUsd: 0` — add the model to the pricing table to get cost tracking.
+## Troubleshooting
 
-## Roadmap
+**`costpilot: command not found`**
 
-- Anthropic and Gemini SDK wrappers
-- Streaming cost estimation
-- Budget limits with hard cutoffs
-- CSV / JSON export
-- Cost alerts (Slack, email)
-- Team analytics with per-user attribution
+Install globally:
+```bash
+npm install -g costpilot
+```
+Or use `npx costpilot report`.
+
+---
+
+**`No data` / empty report after making API calls**
+
+The write queue is async (`setImmediate`). If your process exits immediately after the last API call, the write may not have flushed. Add a short delay or call `process.exit()` explicitly after your last call.
+
+---
+
+**Model shows `costUsd: 0`**
+
+The model name isn't in the pricing table. Check the exact model string returned by the API (it may differ from what you passed in — e.g. `gpt-4o-2024-08-06` vs `gpt-4o`). You can add it yourself:
+
+```ts
+import { PRICING } from "costpilot";
+
+PRICING["gpt-4o-2024-08-06"] = { inputCostPer1M: 2.5, outputCostPer1M: 10.0 };
+```
+
+---
+
+**Permission error on `~/.costpilot/usage.db`**
+
+CostPilot creates `~/.costpilot/` automatically. If it fails, check that your home directory is writable, or point to a custom path:
+
+```ts
+initCostPilot({ dbPath: "/tmp/costpilot.db" });
+```
+
+---
+
+**Using CommonJS (`require`)**
+
+```js
+const { withCostPilot } = require("costpilot");
+```
+
+CostPilot ships both ESM and CJS builds — it works with `require` and `import` without any extra config.
+
+---
 
 ## License
 
