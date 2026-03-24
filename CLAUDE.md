@@ -79,14 +79,14 @@ Async operations are batched using `setImmediate`:
 | `src/cost/pricing.ts` | Model pricing configuration — **update when API prices change** |
 | `src/storage/db.ts` | SQLite singleton, schema initialization, query helpers |
 | `src/cli/index.ts` | CLI entry point — cost reporting commands |
-| `src/queue/writeQueue.ts` | Async write queue using `setImmediate` |
+| `src/utils/async-queue.ts` | Async write queue using `setImmediate` |
 
 ## Testing Patterns
 
 ### Test Setup
 
 ```typescript
-import { initCostPilot, closeDb } from '@costpilot/core';
+import { initCostPilot, closeDb } from '../src/core/tracker';
 
 afterEach(() => {
   closeDb(); // Reset SQLite singleton between tests
@@ -96,7 +96,7 @@ afterEach(() => {
 ### Testing Async Operations
 
 ```typescript
-import { writeQueue } from '@costpilot/queue';
+import { writeQueue } from '../src/utils/async-queue';
 
 it('should log cost', async () => {
   const cost = await trackSomeOperation();
